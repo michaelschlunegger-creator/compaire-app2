@@ -10,3 +10,10 @@ Open the GitHub Pages site URL:
 
 This app runs directly from root `index.html` with CDN React and embedded offline data.
 Deployment Test.
+
+## If Actions are not running
+
+- Go to GitHub repo → Settings → Actions → enable Actions
+- Go to Settings → Pages → Source: GitHub Actions
+
+(This is a GitHub setting; code cannot force-enable it.)
