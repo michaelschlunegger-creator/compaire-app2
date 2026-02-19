@@ -61,12 +61,12 @@ function App() {
   return (
     <div className="app-shell">
       <header className="top-nav">
-        <div className="brand">CODA • PROSOL MIP (Repo2)</div>
+        <div className="brand">CODA • PROSOL MIP (Repo2) • compaire-app2</div>
       </header>
 
       <main className="content">
         <section className="panel">
-          <h1>PROSOL MIP – Duplicate Resolution Simulator</h1>
+          <h1>PROSOL MIP – Duplicate Resolution Simulator • compaire-app2</h1>
           <div className="controls-grid">
             <label className="control-group">
               <span>Main Category</span>
