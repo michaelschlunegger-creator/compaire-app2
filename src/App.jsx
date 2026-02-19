@@ -1,122 +1,101 @@
 import { useMemo, useState } from 'react';
-import { MATERIALS } from './data/materials';
-import { compareMaterials } from './utils/similarityEngine';
-import MaterialSelector from './components/MaterialSelector';
-import DifferencesTable from './components/DifferencesTable';
-import IntelligencePanel from './components/IntelligencePanel';
-import ValueAddScores from './components/ValueAddScores';
+import { runComparison } from './services/compareApi';
 
-const categories = [
-  'Ball Bearings',
-  'Screws',
-  'Valves',
-  'Bushings',
-  'Gaskets',
-  'Hydraulic Fittings',
-  'Electric Motors',
-  'Seals',
-  'Couplings',
-  'Fasteners (Other)',
-];
-
-const fathimHints = [
-  'Can I downgrade this spec safely?',
-  'How do I validate equivalence?',
-  'What’s the quickest saving lever?',
-  'Any risks with lead time?',
-  'Which change is low effort?',
+const sliderDefs = [
+  ['costSensitivity', 'Cost sensitivity'],
+  ['sustainabilityImportance', 'Sustainability importance'],
+  ['longTermFocus', 'Long-term focus'],
+  ['riskAversion', 'Risk aversion'],
 ];
 
 function App() {
-  const [category, setCategory] = useState('Screws');
-  const [materialAId, setMaterialAId] = useState('');
-  const [materialBId, setMaterialBId] = useState('');
-  const [comparison, setComparison] = useState(null);
-  const [showMockupNote, setShowMockupNote] = useState(false);
+  const [form, setForm] = useState({
+    productA: '',
+    productB: '',
+    region: '',
+    customCriterion: '',
+    sliders: {
+      costSensitivity: 50,
+      sustainabilityImportance: 50,
+      longTermFocus: 50,
+      riskAversion: 50,
+    },
+  });
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const categoryMaterials = useMemo(
-    () => MATERIALS.filter((item) => item.category === category),
-    [category],
-  );
+  const radarKeys = useMemo(() => (result ? Object.keys(result.scores.criteria).slice(0, 6) : []), [result]);
 
-  const materialA = categoryMaterials.find((m) => m.id === materialAId) || null;
-  const materialB = categoryMaterials.find((m) => m.id === materialBId) || null;
-
-  const onCategoryChange = (value) => {
-    setCategory(value);
-    setMaterialAId('');
-    setMaterialBId('');
-    setComparison(null);
-  };
-
-  const onCompare = () => {
-    setComparison(compareMaterials(materialA, materialB));
-  };
-
-  const onAskFathimAI = () => {
-    setShowMockupNote(true);
-    window.setTimeout(() => setShowMockupNote(false), 2400);
+  const submit = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const data = await runComparison(form);
+      setResult(data);
+    } catch (e) {
+      setError(e.message || 'Comparison failed');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="app-shell">
-      <header className="top-nav">
-        <div className="brand">CODA • PROSOL MIP (Repo2) • compare-app</div>
-      </header>
-
+      <header className="top-nav"><div className="brand">CompAIre App (Repo: compaire-app2)</div></header>
       <main className="content">
         <section className="panel">
-          <h1>PROSOL MIP – Duplicate Resolution Simulator • compare-app</h1>
+          <h1>CompAIre MVP — Product & Service Comparison</h1>
           <div className="controls-grid">
-            <label className="control-group">
-              <span>Main Category</span>
-              <select value={category} onChange={(e) => onCategoryChange(e.target.value)}>
-                {categories.map((item) => (
-                  <option key={item} value={item}>
-                    {item}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <MaterialSelector
-              label="Material A"
-              options={categoryMaterials}
-              value={materialAId}
-              onChange={setMaterialAId}
-              disabled={!categoryMaterials.length}
-            />
-            <MaterialSelector
-              label="Material B"
-              options={categoryMaterials}
-              value={materialBId}
-              onChange={setMaterialBId}
-              disabled={!categoryMaterials.length}
-            />
+            <input placeholder="Product A" value={form.productA} onChange={(e) => setForm({ ...form, productA: e.target.value })} />
+            <input placeholder="Product B" value={form.productB} onChange={(e) => setForm({ ...form, productB: e.target.value })} />
+            <input placeholder="Region" value={form.region} onChange={(e) => setForm({ ...form, region: e.target.value })} />
+            <input placeholder="Custom criterion (optional)" value={form.customCriterion} onChange={(e) => setForm({ ...form, customCriterion: e.target.value })} />
           </div>
-
-          <div className="action-row">
-            <button className="compare-button" onClick={onCompare} disabled={!materialA || !materialB || materialAId === materialBId}>
-              Compare
-            </button>
-            <div className="mockup-wrap">
-              <button className="fathim-button" onClick={onAskFathimAI} type="button">
-                Ask FathimAI
-              </button>
-              {showMockupNote && <span className="mockup-toast">FathimAI is a mockup in this version.</span>}
-            </div>
+          <div className="sliders">
+            {sliderDefs.map(([key, label]) => (
+              <label key={key}>{label}: {form.sliders[key]}
+                <input type="range" min="0" max="100" value={form.sliders[key]} onChange={(e) => setForm({ ...form, sliders: { ...form.sliders, [key]: Number(e.target.value) } })} />
+              </label>
+            ))}
           </div>
+          <button className="compare-button" onClick={submit} disabled={loading || !form.productA || !form.productB || !form.region}>{loading ? 'Comparing...' : 'Compare'}</button>
+          {error && <p className="error-text">{error}</p>}
         </section>
 
-        {comparison && (
-          <section className="panel score-panel">
-            <p>Duplicate Similarity Score: <strong>{comparison.score}%</strong></p>
-            <span className="score-badge">{comparison.score >= 70 ? 'Potential Duplicate' : 'Distinct Items'}</span>
-          </section>
-        )}
+        {result && (
+          <>
+            <section className="panel score-panel">
+              <p>Total Score A: <strong>{result.scores.total.a}</strong> | Total Score B: <strong>{result.scores.total.b}</strong></p>
+              <p>Winner: <strong>{result.winner}</strong> • Confidence: <strong>{result.confidence}%</strong> • Remaining daily calls: <strong>{result.remaining}</strong></p>
+            </section>
 
-        <DifferencesTable materialA={materialA} materialB={materialB} />
-        {comparison && <ValueAddScores materialA={materialA} materialB={materialB} comparison={comparison} />}
-        <IntelligencePanel materialA={materialA} materialB={materialB} comparison={comparison} />
+            <section className="panel">
+              <h2>Radar snapshot</h2>
+              <div className="radar-grid">
+                {radarKeys.map((k) => (
+                  <div key={k} className="radar-row"><span>{k}</span><div><em>A {result.scores.criteria[k].a}</em><em>B {result.scores.criteria[k].b}</em></div></div>
+                ))}
+              </div>
+            </section>
+
+            <section className="panel">
+              <h2>Criteria, weights, and evidence</h2>
+              <table><thead><tr><th>Criterion</th><th>Weight</th><th>A</th><th>B</th><th>Evidence</th></tr></thead><tbody>
+                {Object.entries(result.scores.criteria).map(([k, row]) => (
+                  <tr key={k}><td>{k}</td><td>{row.weight}</td><td>{row.a}</td><td>{row.b}</td><td><a href={result.evidenceUrls.a[k][0]} target="_blank" rel="noreferrer">A src</a> / <a href={result.evidenceUrls.b[k][0]} target="_blank" rel="noreferrer">B src</a></td></tr>
+                ))}
+              </tbody></table>
+            </section>
+
+            <section className="panel score-panel">
+              <p>TCO (5y estimate): A <strong>{result.tco.a ?? 'N/A'}</strong> vs B <strong>{result.tco.b ?? 'N/A'}</strong></p>
+              <p>Sustainability: A <strong>{result.sustainability.a ?? 'N/A'}</strong> vs B <strong>{result.sustainability.b ?? 'N/A'}</strong></p>
+              <p>{result.explanation}</p>
+              <p>{result.tradeoffs}</p>
+            </section>
+          </>
+        )}
       </main>
     </div>
   );
