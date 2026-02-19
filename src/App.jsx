@@ -61,7 +61,7 @@ function App() {
   return (
     <div className="app-shell">
       <header className="top-nav">
-        <div className="brand">CODA • PROSOL MIP (Repo2) • compare-app</div>
+        <div className="brand">CompAIre App (Repo: compaire-app2)</div>
       </header>
 
       <main className="content">
